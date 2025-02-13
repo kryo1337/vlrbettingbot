@@ -1,1 +1,3 @@
 /scraper/venv
+/scraper/__pycache__
+/scraper/connection.py
