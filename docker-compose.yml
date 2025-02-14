@@ -1,0 +1,25 @@
+services:
+  db:
+    image: postgres:13
+    restart: always
+    environment:
+      POSTGRES_DB: vlrbettingbot
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5433:5432"
+
+  scraper:
+    build: ./scraper
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"
+    environment:
+      DB_NAME: vlrbettingbot
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: db
+      DB_PORT: 5432
