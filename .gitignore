@@ -1,3 +1,9 @@
+.env
+.python-version
 /scraper/venv
 /scraper/__pycache__
 /scraper/connection.py
+/bot/venv
+/bot/__pycache__
+/bot/cogs/__pycache__
+/bot/utils/__pycache__
