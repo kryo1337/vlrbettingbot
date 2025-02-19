@@ -5,6 +5,8 @@ def insert_upcoming_matches(data):
     conn = get_connection()
     cur = conn.cursor()
 
+    cur.execute("DELETE FROM upcoming_matches;")
+
     insert_query = """
     INSERT INTO upcoming_matches (
         team1, team2, flag1, flag2, time_until_match,
@@ -37,6 +39,8 @@ def insert_upcoming_matches(data):
 def insert_live_scores(data):
     conn = get_connection()
     cur = conn.cursor()
+
+    cur.execute("DELETE FROM upcoming_matches;")
 
     insert_query = """
     INSERT INTO live_scores (
@@ -113,3 +117,26 @@ def insert_match_results(data):
     conn.commit()
     cur.close()
     conn.close()
+
+
+def get_events():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    query = """
+    SELECT 
+        match_event, 
+        json_agg(row_to_json(upcoming_matches)) AS matches
+    FROM upcoming_matches
+    GROUP BY match_event;
+    """
+    cur.execute(query)
+    events = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    event_list = []
+    for event in events:
+        event_list.append({"event": event[0], "matches": event[1]})
+
+    return {"message": "Events retrieved successfully", "data": event_list}

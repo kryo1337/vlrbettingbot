@@ -1,6 +1,11 @@
 from fastapi import FastAPI
 from scraper import vlr_upcoming_matches, vlr_live_score, vlr_match_results
-from inserts import insert_upcoming_matches, insert_live_scores, insert_match_results
+from db import (
+    insert_upcoming_matches,
+    insert_live_scores,
+    insert_match_results,
+    get_events,
+)
 
 app = FastAPI()
 
@@ -24,6 +29,11 @@ def insert_results():
     data = vlr_match_results()
     insert_match_results(data)
     return {"message": "Match results inserted successfully", "data": data}
+
+
+@app.get("/events")
+def events():
+    return get_events()
 
 
 if __name__ == "__main__":

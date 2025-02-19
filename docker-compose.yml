@@ -17,9 +17,13 @@ services:
       - db
     ports:
       - "8000:8000"
-    environment:
-      DB_NAME: vlrbettingbot
-      DB_USER: postgres
-      DB_PASSWORD: postgres
-      DB_HOST: db
-      DB_PORT: 5432
+    env_file:
+      - .env
+
+  bot:
+    build: ./bot
+    depends_on:
+      - db
+      - scraper
+    env_file:
+      - .env
