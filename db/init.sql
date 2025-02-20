@@ -49,3 +49,8 @@ CREATE TABLE IF NOT EXISTS match_results (
     tournament_icon TEXT
 );
 
+CREATE TABLE IF NOT EXISTS leaderboard (
+    username TEXT PRIMARY KEY,
+    points INTEGER NOT NULL DEFAULT 0
+);
+

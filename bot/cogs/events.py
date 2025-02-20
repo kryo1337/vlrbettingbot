@@ -1,24 +1,30 @@
 import os
 import httpx
+import discord
+from discord import app_commands
 from discord.ext import commands
 from dotenv import load_dotenv
 
 load_dotenv()
 
+GUILD_ID = int(os.getenv("DISCORD_GUILD_ID", "0"))
 API_EVENT = os.getenv("API_EVENTS", "http://scraper:8000/events")
 API_UPCOMING = os.getenv("API_UPCOMING", "http://scraper:8000/upcoming")
 
 
 class Events(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @commands.command(name="events")
-    async def events(self, ctx):
+    @app_commands.command(name="events", description="Display upcoming events")
+    @app_commands.guilds(discord.Object(id=GUILD_ID))
+    async def events(self, interaction: discord.Interaction):
         async with httpx.AsyncClient() as client:
             upcoming_response = await client.get(API_UPCOMING)
             if upcoming_response.status_code != 200:
-                await ctx.send("Failed to update upcoming matches.")
+                await interaction.response.send_message(
+                    "Failed to update upcoming matches."
+                )
                 return
 
             event_response = await client.get(API_EVENT)
@@ -36,8 +42,8 @@ class Events(commands.Cog):
         else:
             message = "No events found."
 
-        await ctx.send(message)
+        await interaction.response.send_message(message)
 
 
-async def setup(bot):
+async def setup(bot: commands.Bot):
     await bot.add_cog(Events(bot))

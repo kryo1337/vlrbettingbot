@@ -1,4 +1,5 @@
 from connection import get_connection
+from psycopg2 import sql
 
 
 def insert_upcoming_matches(data):
@@ -140,3 +141,48 @@ def get_events():
         event_list.append({"event": event[0], "matches": event[1]})
 
     return {"message": "Events retrieved successfully", "data": event_list}
+
+
+def list_available_events_for_creation():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("SELECT DISTINCT match_event FROM upcoming_matches;")
+    rows = cur.fetchall()
+    upcoming_events = [row[0] for row in rows]
+
+    cur.execute("SELECT tablename FROM pg_tables WHERE tablename LIKE 'leaderboard_%';")
+    rows2 = cur.fetchall()
+    existing_leaderboards = [row[0] for row in rows2]
+
+    available_events = [
+        event
+        for event in upcoming_events
+        if f"leaderboard_{event}" not in existing_leaderboards
+    ]
+
+    cur.close()
+    conn.close()
+
+    return {
+        "message": "Available events retrieved successfully",
+        "data": available_events,
+    }
+
+
+def create_event_leaderboard(match_event):
+    table_name = f"leaderboard_{match_event}"
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    query = sql.SQL(
+        "CREATE TABLE IF NOT EXISTS {} (username TEXT PRIMARY KEY, points INTEGER NOT NULL DEFAULT 0);"
+    ).format(sql.Identifier(table_name))
+
+    cur.execute(query)
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return {"message": f"Leaderboard for event '{match_event}' created successfully."}

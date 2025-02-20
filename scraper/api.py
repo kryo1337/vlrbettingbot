@@ -5,6 +5,8 @@ from db import (
     insert_live_scores,
     insert_match_results,
     get_events,
+    create_event_leaderboard,
+    list_available_events_for_creation,
 )
 
 app = FastAPI()
@@ -34,6 +36,17 @@ def insert_results():
 @app.get("/events")
 def events():
     return get_events()
+
+
+@app.post("/event/{match_event}")
+def event_create(match_event: str):
+    result = create_event_leaderboard(match_event)
+    return result
+
+
+@app.get("/available_events")
+def available_events():
+    return list_available_events_for_creation()
 
 
 if __name__ == "__main__":

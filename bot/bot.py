@@ -18,6 +18,9 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix=BOT_PREFIX, intents=intents)
 
+guild_id_str = os.getenv("DISCORD_GUILD_ID")
+GUILD_ID = int(guild_id_str) if guild_id_str else None
+
 
 async def load_extensions():
     for filename in os.listdir("./cogs"):
@@ -27,9 +30,17 @@ async def load_extensions():
 
 @bot.event
 async def on_ready():
-    if bot.user is None:
-        raise ValueError("bot.user is None after ready")
     print(f"Logged in as {bot.user.name}")
+    try:
+        if GUILD_ID:
+            guild = discord.Object(id=GUILD_ID)
+            synced = await bot.tree.sync(guild=guild)
+            print(f"Synced {len(synced)} slash command(s) for guild {GUILD_ID}.")
+        else:
+            synced = await bot.tree.sync()
+            print(f"Synced {len(synced)} global slash command(s).")
+    except Exception as e:
+        print("Failed to sync slash commands:", e)
 
 
 async def main():
