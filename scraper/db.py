@@ -188,6 +188,24 @@ def create_event_leaderboard(match_event):
     return {"message": f"Leaderboard for event '{match_event}' created successfully."}
 
 
+def get_leaderboard(match_event):
+    table_name = f"leaderboard_{match_event}"
+    conn = get_connection()
+    cur = conn.cursor()
+
+    query = sql.SQL(
+        "SELECT username, points FROM {} ORDER BY points DESC LIMIT 10;"
+    ).format(sql.Identifier(table_name))
+
+    cur.execute(query)
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    leaderboard = [{"username": row[0], "points": row[1]} for row in rows]
+    return {"message": f"Leaderboard for event '{match_event}'", "data": leaderboard}
+
+
 def list_created_events():
     conn = get_connection()
     cur = conn.cursor()

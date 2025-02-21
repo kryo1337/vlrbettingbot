@@ -8,6 +8,7 @@ from db import (
     create_event_leaderboard,
     list_available_events_for_creation,
     list_created_events,
+    get_leaderboard,
 )
 
 app = FastAPI()
@@ -55,6 +56,11 @@ def available_events():
 @app.get("/created_events")
 def created_events():
     return list_created_events()
+
+
+@app.get("/leaderboard/{match_event}")
+def leaderboard(match_event: str):
+    return get_leaderboard(match_event)
 
 
 if __name__ == "__main__":
