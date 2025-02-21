@@ -10,6 +10,7 @@ load_dotenv()
 GUILD_ID = int(os.getenv("DISCORD_GUILD_ID", "0"))
 API_EVENT = os.getenv("API_EVENTS", "http://scraper:8000/events")
 API_UPCOMING = os.getenv("API_UPCOMING", "http://scraper:8000/upcoming")
+API_CREATED = os.getenv("API_CREATED_EVENTS", "http://scraper:8000/created_events")
 
 
 class Events(commands.Cog):
@@ -28,12 +29,27 @@ class Events(commands.Cog):
                 return
 
             event_response = await client.get(API_EVENT)
-            data = event_response.json()
+            if event_response.status_code != 200:
+                await interaction.response.send_message("Failed to fetch events.")
+                return
+            events_data = event_response.json()
 
-        if "data" in data and data["data"]:
+            created_response = await client.get(API_CREATED)
+            if created_response.status_code != 200:
+                created_events = []
+            else:
+                created_data = created_response.json()
+                created_events = created_data.get("data", [])
+
+        if "data" in events_data and events_data["data"]:
             message = "**Upcoming Events:**\n"
-            for event in data["data"]:
-                message += f"\n**Event:** {event['event']}\n"
+            for event in events_data["data"]:
+                event_name = event["event"]
+                if event_name in created_events:
+                    event_name_display = f"{event_name} (created)"
+                else:
+                    event_name_display = event_name
+                message += f"\n**Event:** {event_name_display}\n"
                 for match in event["matches"]:
                     team1 = match.get("team1", "Unknown")
                     team2 = match.get("team2", "Unknown")

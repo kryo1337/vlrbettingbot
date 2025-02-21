@@ -7,6 +7,7 @@ from db import (
     get_events,
     create_event_leaderboard,
     list_available_events_for_creation,
+    list_created_events,
 )
 
 app = FastAPI()
@@ -46,7 +47,14 @@ def event_create(match_event: str):
 
 @app.get("/available_events")
 def available_events():
+    data = vlr_upcoming_matches()
+    insert_upcoming_matches(data)
     return list_available_events_for_creation()
+
+
+@app.get("/created_events")
+def created_events():
+    return list_created_events()
 
 
 if __name__ == "__main__":

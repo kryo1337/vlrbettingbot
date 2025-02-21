@@ -186,3 +186,17 @@ def create_event_leaderboard(match_event):
     conn.close()
 
     return {"message": f"Leaderboard for event '{match_event}' created successfully."}
+
+
+def list_created_events():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("SELECT tablename FROM pg_tables WHERE tablename LIKE 'leaderboard_%';")
+    rows = cur.fetchall()
+    created_events = [row[0].replace("leaderboard_", "") for row in rows]
+
+    cur.close()
+    conn.close()
+
+    return {"message": "Created events retrieved successfully", "data": created_events}
