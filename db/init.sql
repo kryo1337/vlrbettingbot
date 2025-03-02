@@ -54,3 +54,17 @@ CREATE TABLE IF NOT EXISTS leaderboard (
     points INTEGER NOT NULL DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS bets (
+    id SERIAL PRIMARY KEY,
+    username TEXT NOT NULL,
+    match_id INTEGER NOT NULL,
+    event TEXT NOT NULL,
+    predicted_winner TEXT NOT NULL,
+    predicted_result TEXT NOT NULL,
+    predicted_top_frag TEXT NOT NULL,
+    bet_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    settled BOOLEAN DEFAULT FALSE,
+    UNIQUE (username, match_id),
+    FOREIGN KEY (match_id) REFERENCES upcoming_matches(id)
+);
+

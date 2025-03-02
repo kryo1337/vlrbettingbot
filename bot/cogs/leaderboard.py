@@ -20,7 +20,7 @@ class Leaderboard(commands.Cog):
 
     @app_commands.command(
         name="leaderboard",
-        description="Display top 10 users with most points for a given event.",
+        description="Display top users with most points for a given event",
     )
     @app_commands.guilds(discord.Object(id=GUILD_ID))
     async def leaderboard(self, interaction: discord.Interaction, event_name: str):

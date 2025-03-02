@@ -4,6 +4,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from dotenv import load_dotenv
+from urllib.parse import quote
 
 load_dotenv()
 
@@ -12,13 +13,11 @@ API_CREATE = os.getenv("API_CREATE", "http://scraper:8000/event")
 API_AVAILABLE = os.getenv("API_AVAILABLE", "http://scraper:8000/available_events")
 
 
-class CreateEvent(commands.Cog):
+class Create(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @app_commands.command(
-        name="create", description="Create a leaderboard for an event."
-    )
+    @app_commands.command(name="create", description="Create an event")
     @app_commands.guilds(discord.Object(id=GUILD_ID))
     async def create(self, interaction: discord.Interaction, event_name: str):
         async with httpx.AsyncClient() as client:
@@ -30,15 +29,16 @@ class CreateEvent(commands.Cog):
                 return
             available_data = available_resp.json()
 
-        available_events = available_data.get("data", [])
-        if event_name not in available_events:
+        available_events = [e.strip() for e in available_data.get("data", [])]
+        if event_name.strip() not in available_events:
             await interaction.response.send_message(
                 f"Event '{event_name}' is not available for leaderboard creation. Please check the available events."
             )
             return
 
+        encoded_event = quote(event_name.strip())
         async with httpx.AsyncClient() as client:
-            create_resp = await client.post(f"{API_CREATE}/{event_name}")
+            create_resp = await client.post(f"{API_CREATE}/{encoded_event}")
             if create_resp.status_code != 200:
                 await interaction.response.send_message(
                     "Failed to create leaderboard for the event."
@@ -63,7 +63,7 @@ class CreateEvent(commands.Cog):
             available_data = available_resp.json()
         available_events = available_data.get("data", [])
         choices = [
-            app_commands.Choice(name=event, value=event)
+            app_commands.Choice(name=event.strip(), value=event.strip())
             for event in available_events
             if current.lower() in event.lower()
         ]
@@ -71,4 +71,4 @@ class CreateEvent(commands.Cog):
 
 
 async def setup(bot: commands.Bot):
-    await bot.add_cog(CreateEvent(bot))
+    await bot.add_cog(Create(bot))

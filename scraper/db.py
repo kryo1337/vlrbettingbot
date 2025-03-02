@@ -218,3 +218,77 @@ def list_created_events():
     conn.close()
 
     return {"message": "Created events retrieved successfully", "data": created_events}
+
+
+def insert_bet(
+    username,
+    match_id,
+    event,
+    predicted_winner,
+    predicted_result,
+    predicted_top_frag=None,
+):
+    conn = get_connection()
+    cur = conn.cursor()
+    query = """
+    INSERT INTO bets (username, match_id, event, predicted_winner, predicted_result, predicted_top_frag)
+    VALUES (%s, %s, %s, %s, %s, %s)
+    RETURNING id;
+    """
+    cur.execute(
+        query,
+        (
+            username,
+            match_id,
+            event,
+            predicted_winner,
+            predicted_result,
+            predicted_top_frag,
+        ),
+    )
+    bet_id = cur.fetchone()[0]
+    conn.commit()
+    cur.close()
+    conn.close()
+    return {"message": "Bet placed successfully", "bet_id": bet_id}
+
+
+def get_user_active_bets(username):
+    conn = get_connection()
+    cur = conn.cursor()
+    query = """
+    SELECT b.id, b.match_id, b.event, b.predicted_winner, b.predicted_result, b.predicted_top_frag, b.bet_time
+    FROM bets b
+    WHERE b.username = %s AND b.settled = FALSE;
+    """
+    cur.execute(query, (username,))
+    rows = cur.fetchall()
+    bets = []
+    for row in rows:
+        bets.append(
+            {
+                "bet_id": row[0],
+                "match_id": row[1],
+                "event": row[2],
+                "predicted_winner": row[3],
+                "predicted_result": row[4],
+                "predicted_top_frag": row[5],
+                "bet_time": row[6],
+            }
+        )
+    cur.close()
+    conn.close()
+    return {"message": "Active bets retrieved successfully", "data": bets}
+
+
+def get_event_matches(event_name: str):
+    conn = get_connection()
+    cur = conn.cursor()
+    query = "SELECT * FROM upcoming_matches WHERE TRIM(match_event) = %s;"
+    cur.execute(query, (event_name.strip(),))
+    rows = cur.fetchall()
+    columns = [desc[0] for desc in cur.description]
+    matches = [dict(zip(columns, row)) for row in rows]
+    cur.close()
+    conn.close()
+    return matches
