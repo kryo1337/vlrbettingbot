@@ -292,3 +292,36 @@ def get_event_matches(event_name: str):
     cur.close()
     conn.close()
     return matches
+
+
+def get_match_teams(match_id: int):
+    conn = get_connection()
+    cur = conn.cursor()
+    query = "SELECT team1, team2 FROM upcoming_matches WHERE id = %s;"
+    cur.execute(query, (match_id,))
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    if row:
+        return {"team1": row[0], "team2": row[1]}
+    else:
+        return None
+
+
+def get_available_event_matches(username: str, event_name: str):
+    conn = get_connection()
+    cur = conn.cursor()
+    query = """
+    SELECT * FROM upcoming_matches
+    WHERE TRIM(match_event) = %s
+      AND id NOT IN (
+          SELECT match_id FROM bets WHERE username = %s AND settled = FALSE
+      );
+    """
+    cur.execute(query, (event_name.strip(), username))
+    rows = cur.fetchall()
+    columns = [desc[0] for desc in cur.description]
+    matches = [dict(zip(columns, row)) for row in rows]
+    cur.close()
+    conn.close()
+    return matches

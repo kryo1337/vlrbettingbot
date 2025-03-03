@@ -12,6 +12,8 @@ from db import (
     insert_bet,
     get_user_active_bets,
     get_event_matches,
+    get_match_teams,
+    get_available_event_matches,
 )
 
 app = FastAPI()
@@ -114,6 +116,20 @@ def bet(bet_data: dict):
 @app.get("/bets/{username}")
 def bets(username: str):
     return get_user_active_bets(username)
+
+
+@app.get("/match/{match_id}/teams")
+def match_teams(match_id: int):
+    teams = get_match_teams(match_id)
+    if not teams:
+        raise HTTPException(status_code=404, detail="Match not found.")
+    return {"message": "Teams retrieved successfully", "data": teams}
+
+
+@app.get("/available_matches/{username}/{event_name}")
+def available_matches(username: str, event_name: str):
+    matches = get_available_event_matches(username, event_name)
+    return {"message": f"Available matches for event '{event_name}'", "data": matches}
 
 
 if __name__ == "__main__":
