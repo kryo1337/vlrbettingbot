@@ -6,14 +6,22 @@ def insert_upcoming_matches(data):
     conn = get_connection()
     cur = conn.cursor()
 
-    cur.execute("DELETE FROM upcoming_matches;")
-
     insert_query = """
     INSERT INTO upcoming_matches (
         team1, team2, flag1, flag2, time_until_match,
-        match_series, match_event, unix_timestamp, match_page
+        match_series, match_event, unix_timestamp, match_page, players
     )
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    ON CONFLICT (match_page) DO UPDATE SET
+        team1 = EXCLUDED.team1,
+        team2 = EXCLUDED.team2,
+        flag1 = EXCLUDED.flag1,
+        flag2 = EXCLUDED.flag2,
+        time_until_match = EXCLUDED.time_until_match,
+        match_series = EXCLUDED.match_series,
+        match_event = EXCLUDED.match_event,
+        unix_timestamp = EXCLUDED.unix_timestamp,
+        players = EXCLUDED.players;
     """
 
     for match in data["data"]:
@@ -29,6 +37,7 @@ def insert_upcoming_matches(data):
                 match.get("match_event"),
                 match.get("unix_timestamp"),
                 match.get("match_page"),
+                match.get("players", []),
             ),
         )
 
@@ -41,16 +50,34 @@ def insert_live_scores(data):
     conn = get_connection()
     cur = conn.cursor()
 
-    cur.execute("DELETE FROM upcoming_matches;")
-
     insert_query = """
     INSERT INTO live_scores (
         team1, team2, flag1, flag2, team1_logo, team2_logo,
         score1, score2, team1_round_ct, team1_round_t,
         team2_round_ct, team2_round_t, map_number, current_map,
-        time_until_match, match_event, match_series, unix_timestamp, match_page
+        time_until_match, match_event, match_series, unix_timestamp, match_page, players
     )
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    ON CONFLICT (match_page) DO UPDATE SET
+        team1 = EXCLUDED.team1,
+        team2 = EXCLUDED.team2,
+        flag1 = EXCLUDED.flag1,
+        flag2 = EXCLUDED.flag2,
+        team1_logo = EXCLUDED.team1_logo,
+        team2_logo = EXCLUDED.team2_logo,
+        score1 = EXCLUDED.score1,
+        score2 = EXCLUDED.score2,
+        team1_round_ct = EXCLUDED.team1_round_ct,
+        team1_round_t = EXCLUDED.team1_round_t,
+        team2_round_ct = EXCLUDED.team2_round_ct,
+        team2_round_t = EXCLUDED.team2_round_t,
+        map_number = EXCLUDED.map_number,
+        current_map = EXCLUDED.current_map,
+        time_until_match = EXCLUDED.time_until_match,
+        match_event = EXCLUDED.match_event,
+        match_series = EXCLUDED.match_series,
+        unix_timestamp = EXCLUDED.unix_timestamp,
+        players = EXCLUDED.players;
     """
 
     for match in data["data"]:
@@ -76,6 +103,7 @@ def insert_live_scores(data):
                 match.get("match_series"),
                 match.get("unix_timestamp"),
                 match.get("match_page"),
+                match.get("players", []),
             ),
         )
 
@@ -88,18 +116,40 @@ def insert_match_results(data):
     conn = get_connection()
     cur = conn.cursor()
 
-    insert_query = """
+    insert_match_query = """
     INSERT INTO match_results (
-        team1, team2, score1, score2,
-        flag1, flag2, time_completed, round_info,
-        tournament_name, match_page, tournament_icon
+        team1, team2, score1, score2, flag1, flag2, time_completed,
+        round_info, tournament_name, match_page, tournament_icon,
+        top_killer_name, top_killer_kills
     )
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    ON CONFLICT (match_page) DO UPDATE SET
+        team1 = EXCLUDED.team1,
+        team2 = EXCLUDED.team2,
+        score1 = EXCLUDED.score1,
+        score2 = EXCLUDED.score2,
+        flag1 = EXCLUDED.flag1,
+        flag2 = EXCLUDED.flag2,
+        time_completed = EXCLUDED.time_completed,
+        round_info = EXCLUDED.round_info,
+        tournament_name = EXCLUDED.tournament_name,
+        tournament_icon = EXCLUDED.tournament_icon,
+        top_killer_name = EXCLUDED.top_killer_name,
+        top_killer_kills = EXCLUDED.top_killer_kills
+    RETURNING id;
+    """
+
+    insert_player_query = """
+    INSERT INTO match_players (
+        match_id, player_name, kills
+    )
+    VALUES (%s, %s, %s)
+    ON CONFLICT DO NOTHING;
     """
 
     for match in data["data"]:
         cur.execute(
-            insert_query,
+            insert_match_query,
             (
                 match.get("team1"),
                 match.get("team2"),
@@ -112,8 +162,30 @@ def insert_match_results(data):
                 match.get("tournament_name"),
                 match.get("match_page"),
                 match.get("tournament_icon"),
+                (
+                    match["players"]["top_killer"]["player_name"]
+                    if match.get("players")
+                    else None
+                ),
+                (
+                    match["players"]["top_killer"]["kills"]
+                    if match.get("players")
+                    else None
+                ),
             ),
         )
+        match_id = cur.fetchone()[0]
+
+        if match.get("players") and "players" in match["players"]:
+            for player in match["players"]["players"]:
+                cur.execute(
+                    insert_player_query,
+                    (
+                        match_id,
+                        player["player_name"],
+                        player["kills"],
+                    ),
+                )
 
     conn.commit()
     cur.close()
@@ -325,3 +397,28 @@ def get_available_event_matches(username: str, event_name: str):
     cur.close()
     conn.close()
     return matches
+
+
+def get_match_players(match_id: int):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    query_upcoming = "SELECT players FROM upcoming_matches WHERE id = %s;"
+    cur.execute(query_upcoming, (match_id,))
+    row = cur.fetchone()
+    if row and row[0]:
+        cur.close()
+        conn.close()
+        return row[0]
+
+    # query_live = "SELECT players FROM live_scores WHERE id = %s;"
+    # cur.execute(query_live, (match_id,))
+    # row = cur.fetchone()
+    # if row and row[0]:
+    #     cur.close()
+    #     conn.close()
+    #     return row[0]
+
+    cur.close()
+    conn.close()
+    return []

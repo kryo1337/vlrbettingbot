@@ -15,7 +15,8 @@ API_CREATED = os.getenv("API_CREATED_EVENTS", "http://scraper:8000/created_event
 API_AVAILABLE_MATCHES = os.getenv(
     "API_AVAILABLE_MATCHES", "http://scraper:8000/available_matches"
 )
-API_MATCH_TEAMS = os.getenv("API_MATCH_TEAMS", "http://scraper:8000/match")
+API_MATCH_TEAMS = os.getenv("API_MATCH_TEAMS", "http://scraper:8000/match/teams")
+API_MATCH_PLAYERS = os.getenv("API_MATCH_PLAYERS", "http://scraper:8000/match/players")
 
 
 class Bet(commands.Cog):
@@ -120,7 +121,7 @@ class Bet(commands.Cog):
             match_id = int(match_id_str)
         except Exception:
             return []
-        url = f"{API_MATCH_TEAMS}/{match_id}/teams"
+        url = f"{API_MATCH_TEAMS}/{match_id}"
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.get(url, timeout=10.0)
@@ -143,6 +144,35 @@ class Bet(commands.Cog):
             return choices[:25]
         except Exception as e:
             print(f"[ERROR] bet_winner_autocomplete: {e}")
+            return []
+
+    @bet.autocomplete("predicted_top_frag")
+    async def bet_top_frag_autocomplete(
+        self, interaction: discord.Interaction, current: str
+    ):
+        match_id_str = getattr(interaction.namespace, "match_id", None)
+        if not match_id_str:
+            return []
+        try:
+            match_id = int(match_id_str)
+        except Exception:
+            return []
+        url = f"{API_MATCH_PLAYERS}/{match_id}"
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url, timeout=10.0)
+                if response.status_code != 200:
+                    return []
+                data = response.json()
+            players = data.get("data", [])
+            choices = [
+                app_commands.Choice(name=player, value=player)
+                for player in players
+                if current.lower() in player.lower() or current == ""
+            ]
+            return choices[:25]
+        except Exception as e:
+            print(f"[ERROR] bet_top_frag_autocomplete: {e}")
             return []
 
 

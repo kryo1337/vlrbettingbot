@@ -9,7 +9,6 @@ load_dotenv()
 
 GUILD_ID = int(os.getenv("DISCORD_GUILD_ID", "0"))
 API_EVENT = os.getenv("API_EVENTS", "http://scraper:8000/events")
-API_UPCOMING = os.getenv("API_UPCOMING", "http://scraper:8000/upcoming")
 API_CREATED = os.getenv("API_CREATED_EVENTS", "http://scraper:8000/created_events")
 
 
@@ -20,17 +19,11 @@ class Available(commands.Cog):
     @app_commands.command(name="available", description="Display upcoming events")
     @app_commands.guilds(discord.Object(id=GUILD_ID))
     async def events(self, interaction: discord.Interaction):
+        await interaction.response.defer()
         async with httpx.AsyncClient() as client:
-            upcoming_response = await client.get(API_UPCOMING)
-            if upcoming_response.status_code != 200:
-                await interaction.response.send_message(
-                    "Failed to update upcoming matches."
-                )
-                return
-
             event_response = await client.get(API_EVENT)
             if event_response.status_code != 200:
-                await interaction.response.send_message("Failed to fetch events.")
+                await interaction.followup.send("Failed to fetch events.")
                 return
             events_data = event_response.json()
 
@@ -58,7 +51,7 @@ class Available(commands.Cog):
         else:
             message = "No events found."
 
-        await interaction.response.send_message(message)
+        await interaction.followup.send(message)
 
 
 async def setup(bot: commands.Bot):

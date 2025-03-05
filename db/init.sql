@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS upcoming_matches (
     match_series TEXT,
     match_event TEXT,
     unix_timestamp TIMESTAMP,
-    match_page TEXT
+    match_page TEXT UNIQUE,
+    players TEXT[]
 );
 
 CREATE TABLE IF NOT EXISTS live_scores (
@@ -31,7 +32,8 @@ CREATE TABLE IF NOT EXISTS live_scores (
     match_event TEXT,
     match_series TEXT,
     unix_timestamp TIMESTAMP,
-    match_page TEXT
+    match_page TEXT UNIQUE,
+    players TEXT[]
 );
 
 CREATE TABLE IF NOT EXISTS match_results (
@@ -45,8 +47,18 @@ CREATE TABLE IF NOT EXISTS match_results (
     time_completed TEXT,
     round_info TEXT,
     tournament_name TEXT,
-    match_page TEXT,
-    tournament_icon TEXT
+    match_page TEXT UNIQUE,
+    tournament_icon TEXT,
+    top_killer_name TEXT,
+    top_killer_kills INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS match_players (
+    id SERIAL PRIMARY KEY,
+    match_id INTEGER NOT NULL,
+    player_name TEXT NOT NULL,
+    kills INTEGER NOT NULL,
+    FOREIGN KEY (match_id) REFERENCES match_results(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS leaderboard (

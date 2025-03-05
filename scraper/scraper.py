@@ -1,6 +1,5 @@
 import re
 from datetime import datetime, timezone
-
 import requests
 from selectolax.parser import HTMLParser
 
@@ -60,6 +59,8 @@ def vlr_upcoming_matches():
             ).strftime("%Y-%m-%d %H:%M:%S")
             url_path = "https://www.vlr.gg/" + item.attributes["href"]
 
+            players = scrape_players_from_match_page(url_path)
+
             result.append(
                 {
                     "team1": teams[0],
@@ -71,6 +72,7 @@ def vlr_upcoming_matches():
                     "match_event": match_event,
                     "unix_timestamp": timestamp,
                     "match_page": url_path,
+                    "players": players,
                 }
             )
 
@@ -151,6 +153,8 @@ def vlr_live_score():
                     map_number_match.group(0) if map_number_match else "Unknown"
                 )
 
+            players = scrape_players_from_match_page(url_path)
+
             team1_round_ct = round_texts[0]["ct"] if len(round_texts) > 0 else "N/A"
             team1_round_t = round_texts[0]["t"] if len(round_texts) > 0 else "N/A"
             team2_round_ct = round_texts[1]["ct"] if len(round_texts) > 1 else "N/A"
@@ -176,6 +180,7 @@ def vlr_live_score():
                     "match_series": match_series,
                     "unix_timestamp": timestamp,
                     "match_page": url_path,
+                    "players": players,
                 }
             )
 
@@ -190,7 +195,7 @@ def vlr_match_results():
 
     result = []
     for item in html.css("a.wf-module-item"):
-        url_path = item.attributes["href"]
+        url_path = "https://www.vlr.gg" + item.attributes["href"]
         eta = item.css_first("div.ml-eta").text() + " ago"
         rounds = (
             item.css_first("div.match-item-event-series")
@@ -233,6 +238,8 @@ def vlr_match_results():
         flag1 = flag_list[0]
         flag2 = flag_list[1]
 
+        match_details = scrape_match_page(url_path)
+
         result.append(
             {
                 "team1": team1,
@@ -246,7 +253,50 @@ def vlr_match_results():
                 "tournament_name": tourney,
                 "match_page": url_path,
                 "tournament_icon": tourney_icon_url,
+                "players": match_details["players"],
             }
         )
     data = {"data": result}
     return data
+
+
+def scrape_players_from_match_page(match_url):
+    resp = requests.get(match_url, headers=headers)
+    html = HTMLParser(resp.text)
+
+    players = []
+    for player in html.css(".match-header-link-name .text-of"):
+        player_name = player.text().strip()
+        if player_name:
+            players.append(player_name)
+
+    return players
+
+
+def scrape_match_page(match_url):
+    resp = requests.get(match_url, headers=headers)
+    html = HTMLParser(resp.text)
+
+    players_data = []
+    for table in html.css(".vm-stats-game"):
+        if "mod-active" in table.attributes.get("class", ""):
+            for team in table.css(".mod-team"):
+                for player_row in team.css("tr")[1:]:
+                    player_name = (
+                        player_row.css_first(".stats-player-name").text().strip()
+                    )
+                    kills = player_row.css_first(".mod-kills").text().strip()
+                    players_data.append(
+                        {
+                            "player_name": player_name,
+                            "kills": int(kills) if kills.isdigit() else 0,
+                        }
+                    )
+
+    top_killer = max(
+        players_data,
+        key=lambda x: x["kills"],
+        default={"player_name": "N/A", "kills": 0},
+    )
+
+    return {"players": players_data, "top_killer": top_killer}

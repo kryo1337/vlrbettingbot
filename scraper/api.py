@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from scraper import vlr_upcoming_matches, vlr_live_score, vlr_match_results
 from db import (
     insert_upcoming_matches,
@@ -14,6 +14,7 @@ from db import (
     get_event_matches,
     get_match_teams,
     get_available_event_matches,
+    get_match_players,
 )
 
 app = FastAPI()
@@ -53,8 +54,6 @@ def event_create(match_event: str):
 
 @app.get("/available_events")
 def available_events():
-    data = vlr_upcoming_matches()
-    insert_upcoming_matches(data)
     return list_available_events_for_creation()
 
 
@@ -81,17 +80,6 @@ def event_matches(event_name: str):
 
 @app.post("/bet")
 def bet(bet_data: dict):
-    """
-    JSON:
-    {
-      "username": "DiscordNick",
-      "match_id": 123,
-      "event": "EventName",
-      "predicted_winner": "Team1",
-      "predicted_result": "1-2",
-      "predicted_top_frag": "PlayerName"
-    }
-    """
     try:
         username = bet_data["username"]
         match_id = bet_data["match_id"]
@@ -118,7 +106,7 @@ def bets(username: str):
     return get_user_active_bets(username)
 
 
-@app.get("/match/{match_id}/teams")
+@app.get("/match/teams/{match_id}")
 def match_teams(match_id: int):
     teams = get_match_teams(match_id)
     if not teams:
@@ -130,6 +118,14 @@ def match_teams(match_id: int):
 def available_matches(username: str, event_name: str):
     matches = get_available_event_matches(username, event_name)
     return {"message": f"Available matches for event '{event_name}'", "data": matches}
+
+
+@app.get("/match/players/{match_id}")
+def match_players(match_id: int):
+    players = get_match_players(match_id)
+    if not players:
+        raise HTTPException(status_code=404, detail="No players found for this match.")
+    return {"message": "Players retrieved successfully", "data": players}
 
 
 if __name__ == "__main__":
