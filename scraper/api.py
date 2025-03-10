@@ -1,4 +1,9 @@
-from fastapi import FastAPI, HTTPException
+import os
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi_limiter import FastAPILimiter
+from fastapi_limiter.depends import RateLimiter
+import redis.asyncio as redis
 from scraper import vlr_upcoming_matches, vlr_live_score, vlr_match_results
 from db import (
     insert_upcoming_matches,
@@ -17,24 +22,35 @@ from db import (
     get_match_players,
 )
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    redis_client = redis.from_url(
+        "redis://redis:6379", encoding="utf-8", decode_responses=True
+    )
+    await FastAPILimiter.init(redis_client)
+    yield
+    await redis_client.close()
 
 
-@app.get("/upcoming")
+app = FastAPI(lifespan=lifespan)
+
+
+@app.get("/upcoming", dependencies=[Depends(RateLimiter(times=250, seconds=60))])
 def insert_upcoming():
     data = vlr_upcoming_matches()
     insert_upcoming_matches(data)
     return {"message": "Upcoming matches inserted successfully", "data": data}
 
 
-@app.get("/live")
+@app.get("/live", dependencies=[Depends(RateLimiter(times=250, seconds=60))])
 def insert_live():
     data = vlr_live_score()
     insert_live_scores(data)
     return {"message": "Live scores inserted successfully", "data": data}
 
 
-@app.get("/results")
+@app.get("/results", dependencies=[Depends(RateLimiter(times=250, seconds=60))])
 def insert_results():
     data = vlr_match_results()
     insert_match_results(data)
