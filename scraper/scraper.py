@@ -2,6 +2,7 @@ import re
 from datetime import datetime, timezone
 import requests
 from selectolax.parser import HTMLParser
+from urllib.parse import urlparse, urlencode, urlunparse
 
 headers = {
     "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0",
@@ -264,34 +265,65 @@ def scrape_players_from_match_page(match_url):
     resp = requests.get(match_url, headers=headers)
     html = HTMLParser(resp.text)
 
-    players = []
-    for player in html.css(".match-header-link-name .text-of"):
-        player_name = player.text().strip()
+    players = set()
+    for row in html.css(".mod-player .text-of"):
+        player_name = row.text(strip=True)
         if player_name:
-            players.append(player_name)
+            players.add(player_name)
+    return list(players)
 
-    return players
+
+def ensure_map_all(url: str) -> str:
+    parsed = urlparse(url)
+    new_query = urlencode({"game": "all", "tab": "overview"})
+    new_url = urlunparse(
+        (
+            parsed.scheme,
+            parsed.netloc,
+            parsed.path,
+            parsed.params,
+            new_query,
+            parsed.fragment,
+        )
+    )
+    return new_url
 
 
 def scrape_match_page(match_url):
+    match_url = ensure_map_all(match_url)
     resp = requests.get(match_url, headers=headers)
     html = HTMLParser(resp.text)
 
-    players_data = []
-    for table in html.css(".vm-stats-game"):
-        if "mod-active" in table.attributes.get("class", ""):
-            for team in table.css(".mod-team"):
-                for player_row in team.css("tr")[1:]:
-                    player_name = (
-                        player_row.css_first(".stats-player-name").text().strip()
-                    )
-                    kills = player_row.css_first(".mod-kills").text().strip()
-                    players_data.append(
-                        {
-                            "player_name": player_name,
-                            "kills": int(kills) if kills.isdigit() else 0,
-                        }
-                    )
+    players_dict = {}
+
+    for row in html.css("tr"):
+        player_cell = row.css_first("td.mod-player")
+        kills_cell = row.css_first("td.mod-stat.mod-vlr-kills")
+        if player_cell and kills_cell:
+            name_elem = player_cell.css_first(".text-of")
+            if not name_elem:
+                continue
+            player_name = name_elem.text(strip=True)
+
+            kills_elem = kills_cell.css_first("span.side.mod-side.mod-both")
+            if kills_elem:
+                kills_text = kills_elem.text(strip=True)
+                try:
+                    kills = int(kills_text)
+                except ValueError:
+                    kills = 0
+            else:
+                kills = 0
+
+            if player_name in players_dict:
+                players_dict[player_name]["kills"] += kills
+            else:
+                players_dict[player_name] = {"player_name": player_name, "kills": kills}
+
+    players_data = list(players_dict.values())
+
+    for p in players_data:
+        p["kills"] = p["kills"] // 2
 
     top_killer = max(
         players_data,
