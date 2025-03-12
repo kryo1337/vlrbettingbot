@@ -1,4 +1,3 @@
-import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi_limiter import FastAPILimiter
@@ -6,10 +5,11 @@ from fastapi_limiter.depends import RateLimiter
 import redis.asyncio as redis
 from scraper import vlr_upcoming_matches, vlr_live_score, vlr_match_results
 from db import (
+    get_upcoming_events,
+    get_live_events,
     insert_upcoming_matches,
     insert_live_scores,
     insert_match_results,
-    get_events,
     create_event_leaderboard,
     list_available_events_for_creation,
     list_created_events,
@@ -57,9 +57,14 @@ def insert_results():
     return {"message": "Match results inserted successfully", "data": data}
 
 
-@app.get("/events")
-def events():
-    return get_events()
+@app.get("/upcoming_events")
+def upcoming_events():
+    return get_upcoming_events()
+
+
+@app.get("/live_events")
+def live_events():
+    return get_live_events()
 
 
 @app.post("/create/{match_event}")

@@ -192,7 +192,7 @@ def insert_match_results(data):
     conn.close()
 
 
-def get_events():
+def get_upcoming_events():
     conn = get_connection()
     cur = conn.cursor()
 
@@ -212,7 +212,30 @@ def get_events():
     for event in events:
         event_list.append({"event": event[0], "matches": event[1]})
 
-    return {"message": "Events retrieved successfully", "data": event_list}
+    return {"message": "Upcoming events retrieved successfully", "data": event_list}
+
+
+def get_live_events():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    query = """
+    SELECT 
+        match_event, 
+        json_agg(row_to_json(live_scores)) AS matches
+    FROM live_scores
+    GROUP BY match_event;
+    """
+    cur.execute(query)
+    events = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    event_list = []
+    for event in events:
+        event_list.append({"event": event[0], "matches": event[1]})
+
+    return {"message": "Live events retrieved successfully", "data": event_list}
 
 
 def list_available_events_for_creation():

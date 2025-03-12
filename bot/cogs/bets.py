@@ -9,6 +9,7 @@ load_dotenv()
 
 GUILD_ID = int(os.getenv("DISCORD_GUILD_ID", "0"))
 API_BETS = os.getenv("API_BETS", "http://scraper:8000/bets")
+API_MATCH_TEAMS = os.getenv("API_MATCH_TEAMS", "http://scraper:8000/match/teams")
 
 
 class Bets(commands.Cog):
@@ -35,14 +36,28 @@ class Bets(commands.Cog):
                 message = f"{username} has no active bets."
             else:
                 message = f"**Active Bets for {username}:**\n"
-                for bet in bets_list:
-                    message += (
-                        f"Bet ID {bet.get('bet_id')}: "
-                        f"Event: {bet.get('event')}, "
-                        f"Match ID: {bet.get('match_id')}, "
-                        f"Predicted Winner: {bet.get('predicted_winner')}, "
-                        f"Score: {bet.get('predicted_result')}\n"
-                    )
+                async with httpx.AsyncClient() as client:
+                    for bet in bets_list:
+                        match_id = bet.get("match_id")
+                        teams_response = await client.get(
+                            f"{API_MATCH_TEAMS}/{match_id}", timeout=10.0
+                        )
+                        if teams_response.status_code == 200:
+                            teams_data = teams_response.json().get("data", {})
+                            team1 = teams_data.get("team1", "Unknown")
+                            team2 = teams_data.get("team2", "Unknown")
+                            teams_str = f"{team1} vs {team2}"
+                        else:
+                            teams_str = f"Match ID: {match_id}"
+
+                        message += (
+                            f"Bet {bet.get('bet_id')}: "
+                            f"Event: {bet.get('event')}, "
+                            f"Teams: {teams_str}, "
+                            f"Predicted Winner: {bet.get('predicted_winner')}, "
+                            f"Score: {bet.get('predicted_result')}, "
+                            f", Top Frag: {bet.get('predicted_top_frag')}\n"
+                        )
             await interaction.response.send_message(message)
         except Exception as e:
             print(f"[ERROR] /bets command error: {e}")

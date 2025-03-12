@@ -11,10 +11,17 @@ services:
     ports:
       - "5433:5432"
 
+  redis:
+    image: redis:6
+    restart: always
+    ports:
+      - "6379:6379"
+
   scraper:
     build: ./scraper
     depends_on:
       - db
+      - redis
     ports:
       - "8000:8000"
     env_file:
@@ -25,5 +32,6 @@ services:
     depends_on:
       - db
       - scraper
+      - redis
     env_file:
       - .env
