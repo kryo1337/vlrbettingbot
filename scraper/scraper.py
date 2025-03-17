@@ -266,10 +266,15 @@ def scrape_players_from_match_page(match_url):
     html = HTMLParser(resp.text)
 
     players = set()
-    for row in html.css(".mod-player .text-of"):
-        player_name = row.text(strip=True)
-        if player_name:
-            players.add(player_name)
+    for row in html.css("tr"):
+        player_cell = row.css_first("td.mod-player")
+        if player_cell:
+            name_elem = player_cell.css_first(".text-of")
+            if name_elem:
+                player_name = name_elem.text(strip=True)
+                if player_name:
+                    players.add(player_name)
+
     return list(players)
 
 
@@ -295,6 +300,14 @@ def scrape_match_page(match_url):
     html = HTMLParser(resp.text)
 
     players_dict = {}
+    for row in html.css("tr"):
+        player_cell = row.css_first("td.mod-player")
+        if player_cell:
+            name_elem = player_cell.css_first(".text-of")
+            if name_elem:
+                player_name = name_elem.text(strip=True)
+                if player_name and player_name not in players_dict:
+                    players_dict[player_name] = {"player_name": player_name, "kills": 0}
 
     for row in html.css("tr"):
         player_cell = row.css_first("td.mod-player")
@@ -317,11 +330,8 @@ def scrape_match_page(match_url):
 
             if player_name in players_dict:
                 players_dict[player_name]["kills"] += kills
-            else:
-                players_dict[player_name] = {"player_name": player_name, "kills": kills}
 
     players_data = list(players_dict.values())
-
     for p in players_data:
         p["kills"] = p["kills"] // 2
 
